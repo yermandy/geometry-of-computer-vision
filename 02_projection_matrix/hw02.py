@@ -6,17 +6,6 @@ import scipy.linalg as slinalg
 import itertools
 
 
-def estimate_A(u2: np.array, u1: np.array):
-    """ Estimation of the affine transformation from u2 to u1 from 3 point correspondences
-
-    Parameters
-    ----------
-    u2 : np.array
-        2 x n matrix
-    u1 : np.array
-        2 x n matrix
-    """
-
 def estimate_Q(U, X, indices):
     Q_best = None
     Q_all = []
@@ -29,6 +18,7 @@ def estimate_Q(U, X, indices):
 
     ones = np.ones(6)
     zeros = np.zeros(6)
+    rows = np.arange(12)
 
     for idx in itertools.combinations(range(0, len(indices)), 6):
         idx = np.array(idx)
@@ -43,15 +33,13 @@ def estimate_Q(U, X, indices):
             np.c_[zeros, zeros, zeros, zeros, x, y, z, ones, -v * x, -v * y, -v * z, -v]
         ]
 
-        for i in itertools.combinations(range(0, 12), 11):
-            i = np.array(i)
-            
+        for i in range(12):
             # rank deficient matrix
-            M11 = M[i]
+            M11 = M[rows != i]
             Q = scipy.linalg.null_space(M11).reshape(3, 4)
             Q_all.append(Q)
 
-            # preproject points
+            # reproject points
             Ur = Q @ Xh
             Ur = Ur[:2] / Ur[-1]
 
