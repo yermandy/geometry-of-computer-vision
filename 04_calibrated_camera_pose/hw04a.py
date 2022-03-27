@@ -75,7 +75,7 @@ if __name__ == "__main__":
     K = sio.loadmat("K.mat")["K"]
     file = sio.loadmat("daliborka_01-ux.mat")
     u = file['u']
-    x = file['x']
+    X = file['x']
     
     indices = np.array([58, 85, 1, 25, 98, 62, 100, 53, 34, 51]) - 1
     
@@ -87,7 +87,7 @@ if __name__ == "__main__":
         idx = np.array(idx)
         idx = indices[idx]
 
-        X1, X2, X3 = x[:, idx].T
+        X1, X2, X3 = X[:, idx].T
         
         # compute distances between points
         d12 = norm(X1 - X2)

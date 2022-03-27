@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.linalg import norm
+from numpy.linalg import norm, inv
 
 
 def p3p_polynom(d12, d23, d31, c12, c23, c31):
@@ -96,9 +96,12 @@ def p3p_angles(x1, x2, x3, K):
     """
     Solves eq. (7.59)
     """
+    x1 = cvec(x1)
+    x2 = cvec(x2)
+    x3 = cvec(x3)
+    
     K_inv = np.linalg.inv(K)
     
-    norm = lambda x: np.linalg.norm(x)
     cos2 = lambda x, y: ((x.T @ K_inv.T @ K_inv @ y) / (norm(K_inv @ x) * norm(K_inv @ y)))[0][0]
     
     c12 = cos2(x1, x2)
@@ -106,6 +109,56 @@ def p3p_angles(x1, x2, x3, K):
     c31 = cos2(x1, x3)
     
     return c12, c23, c31
+
+
+def p3p_RC(N, u, X, K):
+    """
+    Computes calibrated camera centre C and orientation R from three scene-to-image 
+    correspondences (X, u), using already computed distances N = [η_1, η_2, η_3].
+    The function takes one configuration of η_i and returns a single R and C.
+    Note that R must be ortho-normal with determinant equal to +1.
+    """
+    # x_ɑ -> x_β
+    u = e2p(u)
+    
+    n1, n2, n3 = np.transpose(N)
+    x1, x2, x3 = np.transpose(u)
+    X1, X2, X3 = np.transpose(X)
+    
+    K_inv = inv(K)
+    
+    # x_β -> x_γ
+    x1 = K_inv @ x1
+    x2 = K_inv @ x2
+    x3 = K_inv @ x3
+    
+    # eq. (7.121)
+    Y1 = n1 * x1 / norm(x1)
+    Y2 = n2 * x2 / norm(x2)
+    Y3 = n3 * x3 / norm(x3)
+    
+    # eq. (7.130) - (7.132)
+    Z3e = Y3 - Y1
+    Z2e = Y2 - Y1
+    Z1e = np.cross(Z2e, Z3e)
+    Z3d = X3 - X1
+    Z2d = X2 - X1
+    Z1d = np.cross(Z2d, Z3d)
+    
+    # eq. (7.134)
+    R = np.c_[Z1e, Z2e, Z3e] @ inv(np.c_[Z1d, Z2d, Z3d])
+    
+    # determinant equals to 1
+    # print(np.linalg.det(R))
+    
+    # orthonormal basis
+    # print(np.allclose(R.T @ R - np.eye(3), 0, 1e-8))
+    
+    # eq. (7.135)
+    C = cvec(X1 - R.T @ Y1)
+    
+    return R, C
+    
     
     
 def e2p(X):
@@ -128,3 +181,26 @@ def cvec(x):
 
 def rvec(x):
     return np.asarray(x).reshape(-1)
+
+
+def plot_csystem(ax, base, origin, name, color):
+    """ 
+    >>> plot_csystem(ax, np.eye(3), np.zeros([3, 1]), 'k', 'd')
+    """
+    C = origin[:, 0]
+    Cx, Cy = base[:, 0], base[:, 1]
+    Cz = None if base.shape[1] == 2 else base[:, 2]
+    
+    # Cx /= np.linalg.norm(Cx)
+    # Cy /= np.linalg.norm(Cy)
+    
+    ax.quiver3D(*C, *Cx, arrow_length_ratio=0.1, color=color)
+    ax.quiver3D(*C, *Cy, arrow_length_ratio=0.1, color=color)
+    
+    ax.text(*(C + Cx), f'${name}_x$')
+    ax.text(*(C + Cy), f'${name}_y$')
+    
+    if Cz is not None:
+        # Cz /= np.linalg.norm(Cz)
+        ax.quiver3D(*C, *Cz, arrow_length_ratio=0.1, color=color)
+        ax.text(*(C + Cz), f'${name}_z$')
