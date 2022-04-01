@@ -97,8 +97,8 @@ def find_optimal_RC(u, X, K, indices):
         for N in zip(n1s, n2s, n3s):
             R, C = p3p_RC(N, _u, _X, K)
             
-            # if not is_orthonormal(R):
-            #     continue
+            if not is_orthonormal(R):
+                continue
             
             Q = K @ R @ np.c_[np.eye(3), -C]
             
