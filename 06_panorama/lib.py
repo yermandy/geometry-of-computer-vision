@@ -165,26 +165,24 @@ def p3p_RC(N, u, X, K):
     
     
 def e2p(X):
-    """ 
-    Euclidian to projective coordinates: (n, m) -> (n + 1, m)
-    """
+    """ Euclidian to projective coordinates: (n, m) -> (n + 1, m) """
     X = np.asarray(X)
     return np.vstack([X, np.ones(X.shape[1])])
 
 
 def p2e(X):
-    """ 
-    Projective to euclidian coordinates: (n, m) -> (n - 1, m)
-    """
+    """ Projective to euclidian coordinates: (n, m) -> (n - 1, m) """
     X = np.asarray(X)
     return X[:-1] / X[-1]
 
 
 def cvec(x):
+    """ Converts to column vector """
     return np.asarray(x).reshape(-1, 1)
 
 
 def rvec(x):
+    """ Converts to row vector """
     return np.asarray(x).reshape(-1)
 
 

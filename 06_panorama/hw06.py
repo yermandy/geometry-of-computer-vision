@@ -1,8 +1,6 @@
 from lib import *
 
 
-
-
 if __name__ == '__main__':
     f = sio.loadmat('bridge_corresp.mat')
     u = f['u']
@@ -42,7 +40,7 @@ if __name__ == '__main__':
     for i, j in pairs:
         H, idx = u2h_optim(u[i, j], u[j, i])
         errors = dist(H, u[i, j], u[j, i])
-        plt.plot(range(10), sorted(errors), label=f'{i + 1}-{i + 2}')
+        plt.plot(sorted(errors), label=f'{i + 1}-{i + 2}')
 
     plt.title('transfer errors')
     plt.ylabel('err [px]')
@@ -81,23 +79,107 @@ if __name__ == '__main__':
     # Plot the image borders of the images 02 to 06 transformed by appropriate 
     # homography to the image plane of the image 04. Export as 06_borders.pdf.
 
-    plt.figure()
+    fig, ax = plt.subplots()
+    ax.axis('equal')
     
     Hs = [H24, H34, H44, H54, H64]
     
     for H, i in zip(Hs, [2, 3, 4, 5, 6]):
-        transformed_corners = transform(corners, H)
-        plt.plot(transformed_corners[0], transformed_corners[1], label=i)
+        xs, ys = transform(corners, H)
+        ax.plot(xs, ys, label=i)
     
-    plt.title('Image borders in the coordinate system of image 4')
-    plt.xlabel('$x_4$ [px]')
-    plt.ylabel('$y_4$ [px]')
+    ax.set_title('Image borders in the coordinate system of image 4')
+    ax.set_xlabel('$x_4$ [px]')
+    ax.set_ylabel('$y_4$ [px]')
+    ax.legend()
     plt.savefig('06_borders.pdf')
-    plt.legend()
     # plt.show()
     plt.close()
     
     #! 7.
     # Construct a projective panoramic image from the images 03, 04, and 05, 
     # in the image plane of the image 04. Save as 06_panorama.png.
+    '''
+    
+    fig, ax = plt.subplots()
+    ax.axis('equal')
 
+    Hs = [H34, H44, H54]
+    
+    min_x = np.inf
+    max_x = -np.inf
+    min_y = np.inf
+    max_y = -np.inf
+    for H in Hs:
+        xs, ys = transform(corners, H)
+        min_x = min(min_x, xs.min())
+        max_x = max(max_x, xs.max())
+        min_y = min(min_y, ys.min())
+        max_y = max(max_y, ys.max())
+        
+    min_x, min_y = np.floor([min_x, min_y]).astype(int)
+    max_x, max_y = np.ceil([max_x, max_y]).astype(int)
+
+    # TODO check this logic
+    shift_x = -min_x
+    shift_y = -min_y
+    
+    for H in Hs:
+        xs, ys = transform(corners, H)
+        plt.plot(xs + shift_x, ys + shift_y, label=i)
+    
+    images = [image_2, image_3, image_4]
+    Hs_inv = [inv(H34), inv(H44), inv(H54)]
+    
+    # create a blank image for panorama
+    panorama = np.zeros((max_y - min_y, max_x - min_x, depth))
+    
+    # TODO make it more efficient: vectorize
+    # fill panorama with pixels from images
+    for x in range(min_x, max_x):
+        for y in range(min_y, max_y):
+            for H_inv, image in zip(Hs_inv, images):
+                j, i = p2e(H_inv @ [x, y, 1]).round().astype(int)
+                if i < 0 or j < 0:
+                    continue
+                try:
+                    panorama[y + shift_y, x + shift_x] = image[i, j]
+                except:
+                    pass
+
+    panorama = panorama.astype(np.uint8)
+    plt.imshow(panorama)
+    # plt.show()
+    plt.close()
+    
+    from PIL import Image
+    Image.fromarray(panorama).save('06_panorama.png')
+    
+    # '''
+    
+    #! 8.
+    # Construct calibration matrix K using the actual image size and the original EXIF. 
+    # All the images share the same calibration. Store it in 06_data.mat
+
+    # ExifImageWidth:           2400 px
+    # ExifImageHeight:          1800 px
+    # FocalPlaneXResolution:    2160000 / 225 inch
+    # FocalPlaneYResolution:    1611200 / 168 inch
+    # FocalLength:              7.4 mm
+        
+    # camera calibration matrix from EXIF
+    # https://www.studocu.com/en-au/document/australian-national-university/computer-vision/lecture-notes-course-1-camera-calibration/162080
+    
+    scale = 0.5
+    ax = 7.4 * (2160000 / 225) / 25.4 * scale
+    ay = 7.4 * (1611200 / 168) / 25.4 * scale
+    x0 = 2400 / 2 * scale
+    y0 = 1800 / 2 * scale
+
+    K = np.array([
+        [ax,  0, x0],
+        [ 0, ay, y0],
+        [ 0,  0,  1]
+    ])
+    
+    sio.savemat('06_data.mat', {'K': K})
