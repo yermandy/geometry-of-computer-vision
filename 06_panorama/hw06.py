@@ -133,7 +133,7 @@ if __name__ == '__main__':
     Hs_inv = [inv(H34), inv(H44), inv(H54)]
     
     # create a blank image for panorama
-    panorama = np.zeros((max_y - min_y, max_x - min_x, depth))
+    panorama = np.zeros((max_y - min_y, max_x - min_x, depth), dtype=np.uint8)
     
     grid = np.meshgrid(range(min_x, max_x), range(min_y, max_y))
     coords = np.concatenate(grid).reshape(2, -1)
@@ -150,7 +150,6 @@ if __name__ == '__main__':
         
         panorama[cs[1], cs[0]] = image[ys, xs]
     
-    panorama = panorama.astype(np.uint8)
     plt.imshow(panorama)
     plt.show()
     plt.close()
@@ -205,6 +204,11 @@ if __name__ == '__main__':
     Hs = [H14, H24, H34, H44, H54, H64, H74]
     K_inv = inv(K)
     
+    x_min = np.inf
+    y_min = np.inf
+    x_max = -np.inf
+    y_max = -np.inf
+    
     for i, H in enumerate(Hs):
         # alpha to beta
         coords_beta = H @ e2p(coords_alpha)
@@ -212,18 +216,62 @@ if __name__ == '__main__':
         # beta to gamma
         coords_gamma = K_inv @ coords_beta
         
-        coords = []
-        for x, y, z in coords_gamma.T:
-            a = np.arctan2(x, z)
-            y /= np.sqrt(x ** 2 + z ** 2)
-            coords.append([a, y])
-
-        coords = K[0, 0] * np.array(coords).T
+        xs, ys, zs = coords_gamma
+        
+        a = np.arctan2(xs, zs)
+        y = ys / np.sqrt(xs ** 2 + zs ** 2)
+        
+        coords = K[0, 0] * np.array([a, y])
         plt.plot(coords[0], coords[1], label=i + 1)
+        
+        x_min = min(coords[0].min(), x_min)
+        y_min = min(coords[1].min(), y_min)
+        x_max = max(coords[0].max(), x_max)
+        y_max = max(coords[1].max(), y_max)
         
     ax.set_title('Image borders in the cylindrical plane')
     ax.set_xlabel('$x_c$ [px]')
     ax.set_ylabel('$y_c$ [px]')
     plt.legend()
     plt.savefig('06_borders_c.pdf')
+    # plt.show()
+    plt.close()
+    
+    shift_x = -x_min
+    shift_y = -y_min
+    
+    x_min, y_min = np.floor([x_min, y_min]).astype(int)
+    x_max, y_max = np.ceil([x_max, y_max]).astype(int)
+    
+    panorama = np.zeros((y_max - y_min, x_max - x_min, depth), dtype=np.uint8)
+    
+    images = [image_0, image_1, image_2, image_3, image_4, image_5, image_6]
+    
+    # TODO inverse mapping as in previous task
+    for H, image in zip(Hs, images):
+        grid = np.meshgrid(range(width), range(height))
+        coords_alpha = np.concatenate(grid).reshape(2, -1)
+        
+        # alpha to beta
+        coords_beta = H @ e2p(coords_alpha)
+        
+        # beta to gamma
+        coords_gamma = K_inv @ coords_beta
+        
+        xs, ys, zs = coords_gamma
+        
+        a = np.arctan2(xs, zs)
+        y = ys / np.sqrt(xs ** 2 + zs ** 2)
+        
+        coords = K[0, 0] * np.array([a, y])
+        coords += cvec([shift_x, shift_y])
+        coords = coords.round().astype(int)
+        
+        panorama[coords[1], coords[0]] = image[coords_alpha[1], coords_alpha[0]]
+        
+    plt.imshow(panorama)
     plt.show()
+    plt.close()
+    
+    from PIL import Image
+    Image.fromarray(panorama).save('06_panorama_c.png')
