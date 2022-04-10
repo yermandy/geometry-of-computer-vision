@@ -151,7 +151,7 @@ if __name__ == '__main__':
         panorama[cs[1], cs[0]] = image[ys, xs]
     
     plt.imshow(panorama)
-    plt.show()
+    # plt.show()
     plt.close()
     
     from PIL import Image
@@ -247,11 +247,11 @@ if __name__ == '__main__':
     
     images = [image_0, image_1, image_2, image_3, image_4, image_5, image_6]
     
+    grid = np.meshgrid(range(width), range(height))
+    coords_alpha = np.concatenate(grid).reshape(2, -1)
+    
     # TODO inverse mapping as in previous task
-    for H, image in zip(Hs, images):
-        grid = np.meshgrid(range(width), range(height))
-        coords_alpha = np.concatenate(grid).reshape(2, -1)
-        
+    for H, image in zip(Hs, images):        
         # alpha to beta
         coords_beta = H @ e2p(coords_alpha)
         
@@ -270,7 +270,7 @@ if __name__ == '__main__':
         panorama[coords[1], coords[0]] = image[coords_alpha[1], coords_alpha[0]]
         
     plt.imshow(panorama)
-    plt.show()
+    # plt.show()
     plt.close()
     
     from PIL import Image
