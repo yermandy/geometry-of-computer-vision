@@ -99,7 +99,7 @@ if __name__ == '__main__':
     #! 7.
     # Construct a projective panoramic image from the images 03, 04, and 05, 
     # in the image plane of the image 04. Save as 06_panorama.png.
-    '''
+    # '''
     
     fig, ax = plt.subplots()
     ax.axis('equal')
@@ -134,22 +134,24 @@ if __name__ == '__main__':
     # create a blank image for panorama
     panorama = np.zeros((max_y - min_y, max_x - min_x, depth))
     
-    # TODO make it more efficient: vectorize
-    # fill panorama with pixels from images
-    for x in range(min_x, max_x):
-        for y in range(min_y, max_y):
-            for H_inv, image in zip(Hs_inv, images):
-                j, i = p2e(H_inv @ [x, y, 1]).round().astype(int)
-                if i < 0 or j < 0:
-                    continue
-                try:
-                    panorama[y + shift_y, x + shift_x] = image[i, j]
-                except:
-                    pass
-
+    grid = np.meshgrid(np.arange(min_x, max_x), np.arange(min_y, max_y))
+    coords = np.concatenate(grid).reshape(2, -1)
+    coords_shifted = coords + cvec([shift_x, shift_y])
+    
+    for H_inv, image in zip(Hs_inv, images):
+        xs, ys = p2e(H_inv @ e2p(coords)).round().astype(int)
+        
+        mask = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+        
+        xs = xs[mask]
+        ys = ys[mask]
+        cs = coords_shifted[:, mask]
+        
+        panorama[cs[1], cs[0]] = image[ys, xs]
+    
     panorama = panorama.astype(np.uint8)
     plt.imshow(panorama)
-    # plt.show()
+    plt.show()
     plt.close()
     
     from PIL import Image
@@ -183,3 +185,5 @@ if __name__ == '__main__':
     ])
     
     sio.savemat('06_data.mat', {'K': K})
+    
+    #! 9. 
