@@ -134,7 +134,7 @@ if __name__ == '__main__':
     # create a blank image for panorama
     panorama = np.zeros((max_y - min_y, max_x - min_x, depth))
     
-    grid = np.meshgrid(np.arange(min_x, max_x), np.arange(min_y, max_y))
+    grid = np.meshgrid(range(min_x, max_x), range(min_y, max_y))
     coords = np.concatenate(grid).reshape(2, -1)
     coords_shifted = coords + cvec([shift_x, shift_y])
     
