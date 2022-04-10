@@ -61,13 +61,13 @@ if __name__ == '__main__':
     # reference homography
     H44 = np.eye(3)
     # right side from reference homography
-    H34, _ = u2h_optim(u[2, 3], u[3, 2])
-    H24, _ = u2h_optim(u[1, 2], transform(u[2, 1], H34))
-    H14, _ = u2h_optim(u[0, 1], transform(u[1, 0], H24))
+    H34 = u2h_optim(u[2, 3], u[3, 2])[0]
+    H24 = u2h_optim(u[1, 2], u[2, 1])[0] @ H34
+    H14 = u2h_optim(u[0, 1], u[1, 0])[0] @ H24
     # left side from reference homography
-    H54, _ = u2h_optim(u[4, 3], u[3, 4])
-    H64, _ = u2h_optim(u[5, 4], transform(u[4, 5], H54))
-    H74, _ = u2h_optim(u[6, 5], transform(u[5, 6], H64))
+    H54 = u2h_optim(u[4, 3], u[3, 4])[0]
+    H64 = u2h_optim(u[5, 4], u[4, 5])[0] @ H54
+    H74 = u2h_optim(u[6, 5], u[5, 6])[0] @ H64
     
     height, width, depth = image_3.shape
     
@@ -121,6 +121,7 @@ if __name__ == '__main__':
     max_x, max_y = np.ceil([max_x, max_y]).astype(int)
 
     # TODO check this logic
+    # calculate shift such that the image origin starts at (0, 0)
     shift_x = -min_x
     shift_y = -min_y
     
@@ -186,4 +187,43 @@ if __name__ == '__main__':
     
     sio.savemat('06_data.mat', {'K': K})
     
-    #! 9. 
+    #! 9.
+    # Establish a transformation between each image plane and the coordinate system of the cylinder, described below.
+    #! 10.
+    # Plot the image borders of all the images mapped onto the cylinder (06_borders_c.pdf).
+
+    fig, ax = plt.subplots()
+    ax.axis('equal')
+    
+    N = 20
+    C1 = np.array([np.linspace(0, width, N), [0] * N])
+    C2 = np.array([[width] * N, np.linspace(0, height, N)])
+    C3 = np.array([np.linspace(width, 0, N), [height] * N])
+    C4 = np.array([[0] * N, np.linspace(height, 0, N)])
+    coords_alpha = np.concatenate([C1, C2, C3, C4, C1], axis=1)
+    
+    Hs = [H14, H24, H34, H44, H54, H64, H74]
+    K_inv = inv(K)
+    
+    for i, H in enumerate(Hs):
+        # alpha to beta
+        coords_beta = H @ e2p(coords_alpha)
+        
+        # beta to gamma
+        coords_gamma = K_inv @ coords_beta
+        
+        coords = []
+        for x, y, z in coords_gamma.T:
+            a = np.arctan2(x, z)
+            y /= np.sqrt(x ** 2 + z ** 2)
+            coords.append([a, y])
+
+        coords = K[0, 0] * np.array(coords).T
+        plt.plot(coords[0], coords[1], label=i + 1)
+        
+    ax.set_title('Image borders in the cylindrical plane')
+    ax.set_xlabel('$x_c$ [px]')
+    ax.set_ylabel('$y_c$ [px]')
+    plt.legend()
+    plt.savefig('06_borders_c.pdf')
+    plt.show()
