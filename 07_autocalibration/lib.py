@@ -292,3 +292,23 @@ def x2vp(x1, x2, x3, x4):
     vp = np.cross(l1, l2)
     vp = p2e(vp)
     return vp
+
+
+def uXK2RC(u, X, K, i=0):
+    X1, X2, X3 = X
+    u1, u2, u3 = e2p(u).T
+        
+    # compute the cosines
+    c12, c23, c31 = p3p_angles(u1, u2, u3, K)
+    
+    # compute distances between points
+    d12 = norm(X1 - X2)
+    d23 = norm(X2 - X3)
+    d31 = norm(X1 - X3)
+    
+    # compute the camera-points distances η
+    n1s, n2s, n3s = p3p_distances(d12, d23, d31, c12, c23, c31)
+    
+    R, C = p3p_RC((n1s[i], n2s[i], n3s[i]), u, X.T, K)
+
+    return R, C

@@ -73,6 +73,25 @@ def K_from_three_vanishing_points(vp1, vp2):
     return K
     
     
+def plot_cube(P, ax):
+    cube = np.array([
+        [0, 0, 0], 
+        [0, 0, 1], 
+        [0, 1, 0], 
+        [0, 1, 1],
+        [1, 0, 0],
+        [1, 0, 1],
+        [1, 1, 0],
+        [1, 1, 1]
+    ])
+    
+    for point_1 in cube:
+        x1, y1 = p2e(P @ e2p(cvec(point_1)))
+        for point_2 in cube:
+            if norm(point_1 - point_2) == 1:
+                x2, y2 = p2e(P @ e2p(cvec(point_2)))
+                ax.plot([x1, x2], [y1, y2], 'bo-')    
+    
     
 if __name__ == '__main__':
 
@@ -100,6 +119,7 @@ if __name__ == '__main__':
         [791.7,   426.2,   223.0,   475.3]
     ])
 
+    #! 1. Extract vanishing points
     #! 1.1
     # Download two images of 'pokemons' from the upload system (InputData).
     
@@ -147,6 +167,15 @@ if __name__ == '__main__':
     plt.savefig('07_vp2.pdf')
     savefig_zoom('07_vp2_zoom.pdf', width, height)
     plt.close()
+    
+    #! 2. Calibration
+    #! 2.1 
+    # Compute the camera calibration matrix K from three vanishing points. 
+    # From the four available v.p. pairs (two in each image), select three pairs.
+    
+    #! 2.2 
+    # Compute the angle (should be acute) in the scene between the square and the rectangle. 
+    # Use the mean value of four computed angles from four pairs of vanishing points.
 
     K = K_from_three_vanishing_points(vp1, vp2)
 
@@ -163,8 +192,10 @@ if __name__ == '__main__':
     v8 = e2p(cvec(v8))
     
     K_inv = inv(K)
+    # ω is called the image of the absolute conic, p. 95.
     omega = K_inv.T @ K_inv
     
+    # Eq. (11.1)
     cos_x_y = lambda x, y: ((x.T @ omega @ y) / (math.sqrt(x.T @ omega @ x) * math.sqrt(y.T @ omega @ y)))[0, 0]
     angle_x_y = lambda x, y: math.acos(cos_x_y(x, y))
     
@@ -174,8 +205,7 @@ if __name__ == '__main__':
     angle_v6_v8 = angle_x_y(v6, v8)
     
     angle = (angle_v1_v3 + angle_v2_v4 + angle_v5_v7 + angle_v6_v8) / 4
-    
-    
+        
     sio.savemat('07_data.mat', {
         'u1': u1,
         'u2': u2,
@@ -189,3 +219,43 @@ if __name__ == '__main__':
         'R2': np.eye(3),
     })
     
+    
+    #! 3. Virtual object
+    #! 3.1
+    # Use the K to compute the pose of calibrated camera w.r.t. the black square using P3P. 
+    # Compute camera centers C1, C2, and rotations R1, R2 (both images). 
+    # Chose one corner of the square as origin and consider the square sides having the unit length.
+    
+    #! 3.2
+    # Create a virtual object: 'place' a cube into the two images. 
+    # The black square is the bottom face of the cube, which sits on the poster. 
+    # Show the wire-frame cube in each of the images, export as 07_box_wire1.pdf, 07_box_wire2.pdf.
+    
+    u = C[:, [0, 3, 1]].copy()
+    X = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    
+    R1, C1 = uXK2RC(u, X, K)    
+    P1 = K @ R1 @ np.c_[np.eye(3), -C1]
+    
+    fig, ax = plt.subplots()
+    image = plt.imread('pokemon_09.jpeg')
+    ax.imshow(image)
+    plot_cube(P1, ax)
+    plt.savefig('07_box_wire1.pdf')
+    # plt.show()
+    plt.close()
+    
+    
+    u = C2[:, [0, 3, 1]].copy()
+    X = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    
+    R2, C2 = uXK2RC(u, X, K, 1)
+    P2 = K @ R2 @ np.c_[np.eye(3), -C2]
+    
+    fig, ax = plt.subplots()
+    image = plt.imread('pokemon_34.jpeg')
+    ax.imshow(image)
+    plot_cube(P2, ax)
+    plt.savefig('07_box_wire2.pdf')
+    # plt.show()
+    plt.close()
