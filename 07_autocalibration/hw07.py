@@ -1,7 +1,9 @@
-from re import A
 from lib import *
 import scipy
+import os, shutil
 import scipy.linalg
+from SeqWriter import SeqWriter
+
 
 def plot_vanishing_points(corners, ax, color='b'):
     x1, x2, x3, x4 = e2p(corners).T
@@ -91,8 +93,8 @@ def plot_cube(P, ax):
             if norm(point_1 - point_2) == 1:
                 x2, y2 = p2e(P @ e2p(cvec(point_2)))
                 ax.plot([x1, x2], [y1, y2], 'bo-')    
-    
-    
+
+
 if __name__ == '__main__':
 
     # Image 1 black square corners (clock-wise) (image upper left corner is [0, 0] ):
@@ -238,10 +240,12 @@ if __name__ == '__main__':
     P1 = K @ R1 @ np.c_[np.eye(3), -C1]
     
     fig, ax = plt.subplots()
-    image = plt.imread('pokemon_09.jpeg')
-    ax.imshow(image)
+    image1 = plt.imread('pokemon_09.jpeg')
+    ax.imshow(image1)
     plot_cube(P1, ax)
-    plt.savefig('07_box_wire1.pdf')
+    ax.axis('off')
+    plt.tight_layout()
+    plt.savefig('07_box_wire1.pdf',  bbox_inches='tight', pad_inches=0)
     # plt.show()
     plt.close()
     
@@ -253,9 +257,74 @@ if __name__ == '__main__':
     P2 = K @ R2 @ np.c_[np.eye(3), -C2]
     
     fig, ax = plt.subplots()
-    image = plt.imread('pokemon_34.jpeg')
-    ax.imshow(image)
+    image2 = plt.imread('pokemon_34.jpeg')
+    ax.imshow(image2)
     plot_cube(P2, ax)
-    plt.savefig('07_box_wire2.pdf')
+    ax.axis('off')
+    plt.tight_layout()
+    plt.savefig('07_box_wire2.pdf', bbox_inches='tight', pad_inches=0)
     # plt.show()
     plt.close()
+    
+    
+    import cv2
+    writer = SeqWriter('07_seq_wire.avi')
+    height, width, depth = image1.shape
+    
+    # Generate a sequence of 20 virtual views on the cube, interpolating camera from the first image to the second. 
+    # Use the first image, transformed by a homography. 
+    # Store the middle image of the sequence as 07_box_wire3.pdf and whole sequence as 07_seq_wire.avi.
+
+    os.makedirs('cache', exist_ok=True)
+    
+    for step, alpha in enumerate(np.linspace(0, 1, 20)):
+        
+        # interpolated camera center
+        C = C1 * (1 - alpha) + C2 * alpha
+        # interpolated rotation matrix
+        R = scipy.linalg.fractional_matrix_power(R2 @ R1.T, alpha).real @ R1
+        # interpolated projection matrix
+        P = K @ R @ np.c_[np.eye(3), -C]
+        # interpolated homography
+        # G and G' from Eq. (8.21) and (8.22)
+        G = P1[:, [0, 1, 3]]
+        G_prime = P[:, [0, 1, 3]]
+        # Eq. (8.26)
+        H = G @ inv(G_prime)
+        
+        # generate coordinates of the image
+        grid = np.meshgrid(range(width), range(height))
+        coords_alpha = np.concatenate(grid).reshape(2, -1)
+        coords_beta = e2p(coords_alpha)
+        
+        # map coordinates by the homography
+        xs, ys = p2e(H @ coords_beta).round().astype(int)
+        
+        # filter out the out-of-bound coordinates
+        mask = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+        xs = xs[mask]
+        ys = ys[mask]
+        i, j = coords_alpha[:, mask]
+        
+        # map image pixels
+        image3 = np.zeros_like(image1)
+        image3[j, i] = image1[ys, xs]
+        
+        # show cube
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.imshow(image3)
+        plot_cube(P, ax)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(f'cache/{step}.png', bbox_inches='tight', pad_inches=0)
+        if step == 10:
+            plt.savefig('07_box_wire3.pdf', bbox_inches='tight', pad_inches=0)
+        im = cv2.imread(f'cache/{step}.png')
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        writer.Write(im)
+        # plt.show()
+        plt.close()
+        
+    writer.Close()
+    
+    shutil.rmtree('cache')
