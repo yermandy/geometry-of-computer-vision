@@ -95,7 +95,6 @@ def u2F_optimal(u1_all, u2_all, ix):
         u1 = u1_selected[:, indices]
         u2 = u2_selected[:, indices]
         Fs = u2F(u1, u2)
-        print(Fs)
         
         for F in Fs:
             l2 = F @ u1p_all
