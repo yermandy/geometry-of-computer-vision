@@ -1,10 +1,12 @@
 import numpy as np
-from numpy.linalg import norm, inv
-import numpy as np
 import itertools
+import scipy
+import scipy.linalg
 import math
 import matplotlib.pyplot as plt
 import scipy.io as sio
+
+from numpy.linalg import norm, inv
 
 
 def p3p_polynom(d12, d23, d31, c12, c23, c31):
@@ -68,7 +70,7 @@ def u2F_polynom(G1, G2):
 
     a0 = np.linalg.det(G1)
 
-    return a0, a1, a2, a3
+    return a3, a2, a1, a0
 
 
 
