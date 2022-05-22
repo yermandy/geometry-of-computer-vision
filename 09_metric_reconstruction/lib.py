@@ -538,3 +538,14 @@ def show_epipolar_lines(u, F, ax1, ax2):
         sc = ax2.scatter(u1i, u2i, s=10)
         l = F @ [u1i, u2i, 1]
         ax1.axline(*line_points(*l), color=sc.get_facecolors()[-1])
+        
+
+def create_3d_plot(plt):
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    # ax.set_xlim3d(-3, 3)
+    # ax.set_ylim3d(-3, 3)
+    # ax.set_zlim3d(-1, 5)
+
+    return fig, ax
